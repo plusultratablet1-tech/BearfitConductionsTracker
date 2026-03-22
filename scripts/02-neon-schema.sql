@@ -1,0 +1,60 @@
+-- Neon Database Schema for Bearfit Conduction Tracker
+-- This script creates all necessary tables for the application
+
+-- Create coaches table
+CREATE TABLE IF NOT EXISTS coaches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  branch VARCHAR(100) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create clients table
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  qr_code VARCHAR(255) UNIQUE NOT NULL,
+  package_type VARCHAR(50) NOT NULL CHECK (package_type IN ('Full 48', 'Full 24', 'Staggered 48', 'Staggered 24')),
+  remaining_balance INTEGER NOT NULL DEFAULT 0,
+  starting_balance INTEGER,
+  coach_id UUID REFERENCES coaches(id) ON DELETE SET NULL,
+  branch VARCHAR(100) NOT NULL,
+  payment_status VARCHAR(255),
+  is_inactive BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create payment_records table
+CREATE TABLE IF NOT EXISTS payment_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  amount DECIMAL(10, 2) NOT NULL,
+  status VARCHAR(50) NOT NULL CHECK (status IN ('pending', 'paid', 'overdue')),
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create session_records table
+CREATE TABLE IF NOT EXISTS session_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  session_type VARCHAR(50) NOT NULL CHECK (session_type IN ('Cardio', 'Weights', 'Pilates')),
+  session_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  coach_id UUID REFERENCES coaches(id) ON DELETE SET NULL,
+  branch VARCHAR(100) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_clients_coach_id ON clients(coach_id);
+CREATE INDEX IF NOT EXISTS idx_clients_branch ON clients(branch);
+CREATE INDEX IF NOT EXISTS idx_clients_qr_code ON clients(qr_code);
+CREATE INDEX IF NOT EXISTS idx_clients_is_inactive ON clients(is_inactive);
+CREATE INDEX IF NOT EXISTS idx_payment_records_client_id ON payment_records(client_id);
+CREATE INDEX IF NOT EXISTS idx_session_records_client_id ON session_records(client_id);
+CREATE INDEX IF NOT EXISTS idx_session_records_coach_id ON session_records(coach_id);
+CREATE INDEX IF NOT EXISTS idx_session_records_date ON session_records(session_date);
